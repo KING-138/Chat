@@ -16,10 +16,22 @@
 }
 
 body{
-  background:#f2f2f2;
+  background:#e9e9e9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
   height:100vh;
+}
+
+.app{
+  width:100%;
+  max-width:430px;
+  aspect-ratio:9/16;
+  background:#f5f5f5;
   display:flex;
   flex-direction:column;
+  overflow:hidden;
+  border:1px solid #ccc;
 }
 
 .top{
@@ -30,6 +42,7 @@ body{
   align-items:center;
   justify-content:center;
   font-weight:bold;
+  flex-shrink:0;
 }
 
 .chat{
@@ -40,10 +53,10 @@ body{
 
 .msg{
   background:white;
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:10px;
   border:1px solid #ddd;
+  border-radius:10px;
+  padding:10px;
+  margin-bottom:10px;
 }
 
 .name{
@@ -52,12 +65,46 @@ body{
   margin-bottom:4px;
 }
 
-.bottom{
+.replyBox{
+  background:#f1f1f1;
+  padding:6px;
+  border-radius:6px;
+  font-size:12px;
+  margin-bottom:6px;
+}
+
+.actions{
   display:flex;
   gap:8px;
+  margin-top:8px;
+}
+
+.smallBtn{
+  border:none;
+  background:none;
+  color:#666;
+  font-size:12px;
+}
+
+.bottom{
   padding:10px;
   background:white;
   border-top:1px solid #ddd;
+  flex-shrink:0;
+}
+
+.replyPreview{
+  background:#eee;
+  padding:6px;
+  border-radius:6px;
+  font-size:12px;
+  margin-bottom:6px;
+  display:none;
+}
+
+.inputRow{
+  display:flex;
+  gap:8px;
 }
 
 input{
@@ -79,15 +126,25 @@ button{
 </head>
 <body>
 
-<div class="top" id="top">
-  실시간 채팅
+<div class="app">
+
+<div class="top">
+실시간 채팅
 </div>
 
 <div class="chat" id="chat"></div>
 
 <div class="bottom">
-  <input id="input" placeholder="메시지 입력">
-  <button onclick="send()">전송</button>
+
+<div class="replyPreview" id="replyPreview"></div>
+
+<div class="inputRow">
+<input id="input" placeholder="메시지 입력">
+<button onclick="send()">전송</button>
+</div>
+
+</div>
+
 </div>
 
 <script>
@@ -104,81 +161,105 @@ const db = supabase.createClient(
 
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
-const topBar = document.getElementById("top");
+const replyPreview =
+document.getElementById("replyPreview");
 
-// 이름 설정
-let username = localStorage.getItem("chat_name");
+let username =
+localStorage.getItem("chat_name");
 
 if(!username){
+
   username = prompt("이름 입력");
-  
-  if(!username || username.trim()==""){
+
+  if(!username || !username.trim()){
     username = "익명";
   }
 
-  localStorage.setItem("chat_name",username);
+  localStorage.setItem(
+    "chat_name",
+    username
+  );
 }
 
-// 관리자 모드
-let tapCount = 0;
-
-topBar.onclick = ()=>{
-
-  tapCount++;
-
-  setTimeout(()=>{
-    tapCount = 0;
-  },1000);
-
-  if(tapCount >= 3){
-
-    const code = prompt("코드 입력");
-
-    if(code === "js"){
-
-      const cmd = prompt(
-`관리자 기능
-
-1 = 채팅 전체 삭제`
-      );
-
-      // 전체 삭제
-      if(cmd === "1"){
-
-        if(confirm("전체 삭제?")){
-
-          db
-          .from("messages")
-          .delete()
-          .neq("id",0);
-
-          chat.innerHTML = "";
-        }
-      }
-    }
-
-    tapCount = 0;
-  }
-};
+let replyText = "";
 
 // 메시지 추가
-function addMessage(name,text){
+function addMessage(msg){
 
   const div = document.createElement("div");
 
   div.className = "msg";
 
+  let replyHtml = "";
+
+  if(msg.reply){
+    replyHtml =
+    `<div class="replyBox">
+      ${escapeHtml(msg.reply)}
+    </div>`;
+  }
+
   div.innerHTML = `
-    <div class="name">${escapeHtml(name)}</div>
-    <div>${escapeHtml(text)}</div>
+    <div class="name">
+      ${escapeHtml(msg.name)}
+    </div>
+
+    ${replyHtml}
+
+    <div>
+      ${escapeHtml(msg.text)}
+    </div>
+
+    <div class="actions">
+
+      <button class="smallBtn">
+        답글
+      </button>
+
+      <button class="smallBtn">
+        삭제
+      </button>
+
+    </div>
   `;
+
+  // 답글
+  div
+  .querySelectorAll(".smallBtn")[0]
+  .onclick = ()=>{
+
+    replyText =
+    `${msg.name}: ${msg.text}`;
+
+    replyPreview.style.display =
+    "block";
+
+    replyPreview.textContent =
+    "답글중: " + replyText;
+  };
+
+  // 삭제
+  div
+  .querySelectorAll(".smallBtn")[1]
+  .onclick = async ()=>{
+
+    if(confirm("삭제할까요?")){
+
+      await db
+      .from("messages")
+      .delete()
+      .eq("id",msg.id);
+
+      loadMessages();
+    }
+  };
 
   chat.appendChild(div);
 
   chat.scrollTop = chat.scrollHeight;
 }
 
-// 기존 메시지 불러오기
+// 불러오기
 async function loadMessages(){
 
   const { data } = await db
@@ -188,14 +269,14 @@ async function loadMessages(){
 
   chat.innerHTML = "";
 
-  data.forEach(m=>{
-    addMessage(m.name,m.text);
+  data.forEach(msg=>{
+    addMessage(msg);
   });
 
   chat.scrollTop = chat.scrollHeight;
 }
 
-// 전송
+// 보내기
 async function send(){
 
   const text = input.value.trim();
@@ -206,14 +287,21 @@ async function send(){
   .from("messages")
   .insert({
     name:username,
-    text:text
+    text:text,
+    reply:replyText
   });
 
   input.value = "";
+
+  replyText = "";
+
+  replyPreview.style.display =
+  "none";
 }
 
 // 엔터 전송
 input.addEventListener("keydown",e=>{
+
   if(e.key==="Enter"){
     send();
   }
@@ -229,16 +317,16 @@ db.channel("room")
     table:"messages"
   },
   payload=>{
-    addMessage(
-      payload.new.name,
-      payload.new.text
-    );
+
+    addMessage(payload.new);
   }
 )
 .subscribe();
 
-// HTML 문자 방지
+// 문자 보호
 function escapeHtml(text){
+
+  if(!text) return "";
 
   return text
   .replaceAll("&","&amp;")
