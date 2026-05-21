@@ -1,352 +1,841 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>채팅</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-  font-family:sans-serif;
-}
-
-html,body{
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  background:#e9e9e9;
-}
-
-.app{
-  width:100vw;
-  height:100vh;
-  max-width:calc(100vh * 9 / 16);
-  margin:auto;
-  background:#f5f5f5;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-}
-
-.top{
-  height:55px;
-  background:white;
-  border-bottom:1px solid #ddd;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  flex-shrink:0;
-}
-
-.chat{
-  flex:1;
-  overflow-y:auto;
-  padding:10px;
-}
-
-.msg{
-  background:white;
-  border:1px solid #ddd;
-  border-radius:12px;
-  padding:10px;
-  margin-bottom:10px;
-}
-
-.name{
-  font-size:12px;
-  opacity:.6;
-  margin-bottom:6px;
-}
-
-.reply{
-  background:#f1f1f1;
-  border-left:3px solid #999;
-  padding:6px;
-  border-radius:6px;
-  margin-bottom:8px;
-  font-size:13px;
-}
-
-.msgText{
-  word-break:break-word;
-}
-
-.actions{
-  display:flex;
-  gap:8px;
-  margin-top:8px;
-}
-
-.actions button{
-  height:28px;
-  padding:0 10px;
-  font-size:12px;
-  background:#eee;
-  color:black;
-}
-
-.bottom{
-  display:flex;
-  gap:8px;
-  padding:10px;
-  background:white;
-  border-top:1px solid #ddd;
-  flex-shrink:0;
-}
-
-input{
-  flex:1;
-  height:44px;
-  border:1px solid #ccc;
-  border-radius:10px;
-  padding:0 12px;
-  outline:none;
-}
-
-button{
-  border:none;
-  border-radius:10px;
-  background:black;
-  color:white;
-  cursor:pointer;
-}
-
-.sendBtn{
-  width:70px;
-}
-</style>
-</head>
-<body>
-
-<div class="app">
-
-<div class="top" id="top">
-실시간 채팅
-</div>
-
-<div class="chat" id="chat"></div>
-
-<div class="bottom">
-<input id="input" placeholder="메시지 입력">
-<button class="sendBtn" onclick="send()">전송</button>
-</div>
-
-</div>
-
-<script>
-const SUPABASE_URL =
-"https://sqaxxayqngbngqefdvqi.supabase.co";
-
-const SUPABASE_KEY =
-"sb_publishable_n6-WDrUrB4kMuHO_vImMwQ_yQxiPMjV";
-
-const db = supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
-
-const chat = document.getElementById("chat");
-const input = document.getElementById("input");
-const topBar = document.getElementById("top");
-
-let username = localStorage.getItem("chat_name");
-
-if(!username){
-
-  username = prompt("이름 입력");
-
-  if(!username || username.trim()==""){
-    username = "익명";
-  }
-
-  localStorage.setItem("chat_name",username);
-}
-
-let adminMode = false;
-let tapCount = 0;
-
-let replyTarget = null;
-
-// 관리자 모드
-topBar.onclick = ()=>{
-
-  tapCount++;
-
-  setTimeout(()=>{
-    tapCount = 0;
-  },1000);
-
-  if(tapCount >= 3){
-
-    const code = prompt("코드");
-
-    if(code === "js"){
-
-      adminMode = true;
-
-      alert("관리자 모드 활성화");
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>건의 접수</title>
+  <style>
+    :root {
+      --bg: #f5f5f5;
+      --panel: #fff;
+      --text: #151515;
+      --muted: #7b7b7b;
+      --line: #e8e8e8;
+      --accent: #2f80ed;
+      --danger: #d64545;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      --radius: 18px;
     }
 
-    tapCount = 0;
-  }
-};
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
-// 메시지 추가
-function addMessage(data){
+    button, input, textarea, select { font: inherit; }
 
-  const div = document.createElement("div");
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-  div.className = "msg";
+    .topbar {
+      background: #111;
+      color: #fff;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      flex: 0 0 auto;
+    }
 
-  let replyHTML = "";
+    .topbar .title {
+      font-size: 18px;
+      font-weight: 800;
+    }
 
-  if(data.reply){
+    .icon-btn {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+    }
 
-    replyHTML = `
-      <div class="reply">
-        ${escapeHtml(data.reply)}
+    .appbar {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      flex: 0 0 auto;
+    }
+
+    .brand {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .page {
+      max-width: 980px;
+      width: 100%;
+      margin: 0 auto;
+      background: #fff;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      background: #fff;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+
+    .tab {
+      border: 0;
+      background: transparent;
+      padding: 16px 18px 14px;
+      font-size: 16px;
+      color: #666;
+      cursor: pointer;
+      white-space: nowrap;
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .tab.active {
+      color: #111;
+      font-weight: 800;
+    }
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: -1px;
+      height: 3px;
+      border-radius: 999px;
+      background: #222;
+    }
+
+    .content {
+      padding: 14px 14px 92px;
+    }
+
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 2px 14px;
+      border-bottom: 1px solid #efefef;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .select-wrap {
+      position: relative;
+      min-width: 150px;
+    }
+    .select-wrap select {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: #666;
+      font-size: 15px;
+      padding: 10px 26px 10px 8px;
+      outline: none;
+      cursor: pointer;
+    }
+    .select-wrap::after {
+      content: "▾";
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      pointer-events: none;
+    }
+
+    .spacer { flex: 1; }
+
+    .refresh-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #333;
+      border-radius: 999px;
+      padding: 9px 14px;
+      cursor: pointer;
+    }
+
+    .posts {
+      display: grid;
+      gap: 12px;
+    }
+
+    .post {
+      border: 1px solid #ececec;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 1px 0 rgba(0,0,0,.02);
+      padding: 16px;
+    }
+
+    .post-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .post-title {
+      margin: 0 0 8px;
+      font-size: 18px;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+    }
+
+    .meta {
+      color: #888;
+      font-size: 13px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .summary {
+      white-space: pre-wrap;
+      line-height: 1.6;
+      font-size: 15px;
+      color: #222;
+      margin: 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #444;
+      background: #f6f6f6;
+      padding: 6px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .post-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      align-items: center;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      background: #fafafa;
+      border-radius: 999px;
+      padding: 8px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .btn.primary { background: var(--accent); color: #fff; }
+    .btn.ghost { background: #f5f5f5; color: #333; }
+    .btn.danger { background: #fff1f1; color: var(--danger); }
+
+    .comment-box {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .comment-form {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .input, .textarea, .modal-input, .modal-textarea, .modal-select {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      background: #fff;
+      color: #222;
+      padding: 12px 14px;
+      outline: none;
+    }
+    .textarea, .modal-textarea { min-height: 120px; resize: vertical; }
+    .input:focus, .textarea:focus, .modal-input:focus, .modal-textarea:focus, .modal-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(47,128,237,.12);
+    }
+
+    .comments {
+      margin-top: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .comment {
+      border: 1px solid #ededed;
+      border-radius: 14px;
+      background: #fcfcfc;
+      padding: 12px;
+    }
+
+    .comment-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .small { font-size: 12px; color: #888; }
+
+    .empty {
+      text-align: center;
+      color: #777;
+      padding: 60px 20px;
+      font-size: 18px;
+    }
+
+    .fab {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(47,128,237,.35);
+      cursor: pointer;
+      font-size: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+    .drawer-backdrop.open { display: flex; }
+
+    .drawer {
+      width: min(100%, 760px);
+      max-height: 90vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 24px 24px 16px 16px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .drawer-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .drawer-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .status {
+      margin-top: 10px;
+      min-height: 20px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    @media (max-width: 640px) {
+      .topbar { height: 50px; padding: 0 10px; }
+      .topbar .title { font-size: 16px; }
+      .appbar { height: 56px; }
+      .tab { font-size: 15px; padding: 14px 14px 12px; }
+      .content { padding: 12px 12px 86px; }
+      .form-row { grid-template-columns: 1fr; }
+      .drawer { border-radius: 18px 18px 14px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="뒤로가기">←</button>
+      <div class="title">건의 접수</div>
+      <button class="icon-btn" aria-label="닫기">×</button>
+    </header>
+
+    <div class="appbar">
+      <button class="icon-btn" aria-label="메뉴">☰</button>
+      <div class="brand">FC MOBILE</div>
+      <button class="icon-btn" aria-label="검색">⌕</button>
+    </div>
+
+    <main class="page">
+      <div class="tabs">
+        <button class="tab active" data-category="suggestion">건의 접수</button>
       </div>
-    `;
-  }
 
-  div.innerHTML = `
-    <div class="name">
-      ${escapeHtml(data.name)}
+      <section class="content">
+        <div class="filter-row">
+          <div class="select-wrap">
+            <select id="categoryFilter">
+              <option value="suggestion" selected>말머리 없음</option>
+            </select>
+          </div>
+          <div class="spacer"></div>
+          <button class="refresh-btn" id="refreshBtn">새로고침</button>
+        </div>
+
+        <div id="postsList" class="posts"></div>
+        <div class="status" id="statusText"></div>
+      </section>
+    </main>
+  </div>
+
+  <button class="fab" id="openComposer" aria-label="글쓰기">✎</button>
+
+  <div class="drawer-backdrop" id="composerBackdrop" aria-hidden="true">
+    <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="composerTitle">
+      <div class="drawer-head">
+        <h2 class="drawer-title" id="composerTitle">글 작성</h2>
+        <button class="icon-btn" id="closeComposer" aria-label="닫기">×</button>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <input class="modal-input" id="authorInput" type="text" placeholder="작성자" />
+          <select class="modal-select" id="postCategory">
+            <option value="suggestion" selected>건의 접수</option>
+          </select>
+        </div>
+        <input class="modal-input" id="titleInput" type="text" placeholder="제목" />
+        <textarea class="modal-textarea" id="contentInput" placeholder="내용"></textarea>
+        <button class="btn primary" id="savePostBtn">게시글 등록</button>
+      </div>
+
+      <div class="status" id="composerStatus"></div>
     </div>
+  </div>
 
-    ${replyHTML}
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-    <div class="msgText">
-      ${escapeHtml(data.text)}
-    </div>
+    const SUPABASE_URL = 'https://sqaxxayqngbngqefdvqi.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_n6-WDrUrB4kMuHO_vImMwQ_yQxiPMjV';
 
-    <div class="actions">
-      <button class="replyBtn">
-        답글
-      </button>
-    </div>
-  `;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // 답글
-  div.querySelector(".replyBtn").onclick = ()=>{
+    const postsList = document.getElementById('postsList');
+    const statusText = document.getElementById('statusText');
+    const composerStatus = document.getElementById('composerStatus');
+    const openComposer = document.getElementById('openComposer');
+    const closeComposer = document.getElementById('closeComposer');
+    const composerBackdrop = document.getElementById('composerBackdrop');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const savePostBtn = document.getElementById('savePostBtn');
+    const authorInput = document.getElementById('authorInput');
+    const titleInput = document.getElementById('titleInput');
+    const contentInput = document.getElementById('contentInput');
+    const postCategory = document.getElementById('postCategory');
 
-    replyTarget = data.text;
+    const likedPosts = new Set(JSON.parse(localStorage.getItem('likedPosts') || '[]'));
+    const likedComments = new Set(JSON.parse(localStorage.getItem('likedComments') || '[]'));
 
-    input.placeholder =
-    "답글 작성중...";
-  };
+    let posts = [];
+    let comments = [];
 
-  // 관리자 삭제
-  if(adminMode){
+    function setStatus(text, isError = false) {
+      statusText.textContent = text;
+      statusText.style.color = isError ? '#d64545' : '#666';
+    }
 
-    const delBtn =
-    document.createElement("button");
+    function setComposerStatus(text, isError = false) {
+      composerStatus.textContent = text;
+      composerStatus.style.color = isError ? '#d64545' : '#666';
+    }
 
-    delBtn.textContent = "삭제";
+    function openDrawer() {
+      composerBackdrop.classList.add('open');
+      composerBackdrop.setAttribute('aria-hidden', 'false');
+    }
 
-    delBtn.onclick = async ()=>{
+    function closeDrawer() {
+      composerBackdrop.classList.remove('open');
+      composerBackdrop.setAttribute('aria-hidden', 'true');
+      setComposerStatus('');
+    }
 
-      if(confirm("삭제?")){
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
 
-        await db
-        .from("messages")
-        .delete()
-        .eq("id",data.id);
+    function formatDate(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value);
+      return d.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
 
-        div.remove();
+    function commentCount(postId) {
+      return comments.filter(c => c.post_id === postId).length;
+    }
+
+    function renderPosts() {
+      const keyword = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+      const filtered = posts.filter(post => {
+        const title = (post.title || '').toLowerCase();
+        const content = (post.content || '').toLowerCase();
+        return !keyword || title.includes(keyword) || content.includes(keyword);
+      });
+
+      if (!filtered.length) {
+        postsList.innerHTML = '<div class="empty">게시글이 없습니다.</div>';
+        return;
       }
-    };
 
-    div
-    .querySelector(".actions")
-    .appendChild(delBtn);
-  }
+      postsList.innerHTML = filtered.map(post => {
+        const postComments = comments.filter(c => c.post_id === post.id);
+        const commentsHtml = postComments.length
+          ? postComments.map(comment => `
+              <div class="comment">
+                <div class="comment-top">
+                  <div><strong>${escapeHtml(comment.author || '익명')}</strong></div>
+                  <div class="small">${formatDate(comment.created_at)}</div>
+                </div>
+                <div class="summary" style="font-size:14px;margin:0 0 10px 0;">${escapeHtml(comment.content || '')}</div>
+                <div class="post-actions" style="margin-top:0;">
+                  <span class="pill">좋아요 <b>${comment.likes ?? 0}</b></span>
+                  <button class="btn ghost" onclick="likeComment(${comment.id})">좋아요</button>
+                  <button class="btn danger" onclick="deleteComment(${comment.id})">삭제</button>
+                </div>
+              </div>
+            `).join('')
+          : '<div class="small">댓글이 없습니다.</div>';
 
-  chat.appendChild(div);
+        const isPostLiked = likedPosts.has(String(post.id));
 
-  chat.scrollTop = chat.scrollHeight;
-}
+        return `
+          <article class="post">
+            <div class="post-head">
+              <div style="min-width:0;flex:1;">
+                <h3 class="post-title">${escapeHtml(post.title || '')}</h3>
+                <div class="meta">
+                  <span>작성자: ${escapeHtml(post.author || '익명')}</span>
+                  <span>·</span>
+                  <span>${formatDate(post.created_at)}</span>
+                </div>
+              </div>
+              <span class="badge">♥ <b id="post-like-${post.id}">${post.likes ?? 0}</b> · 댓글 ${commentCount(post.id)}</span>
+            </div>
 
-// 불러오기
-async function loadMessages(){
+            <p class="summary">${escapeHtml(post.content || '')}</p>
 
-  const { data } = await db
-  .from("messages")
-  .select("*")
-  .order("id",{ascending:true});
+            <div class="post-actions">
+              <button class="btn primary" onclick="likePost(${post.id})">좋아요${isPostLiked ? ' 완료' : ''}</button>
+              <button class="btn ghost" onclick="editPost(${post.id})">수정</button>
+              <button class="btn danger" onclick="deletePost(${post.id})">삭제</button>
+              <button class="btn ghost" onclick="toggleComments(${post.id})">댓글 보기</button>
+            </div>
 
-  chat.innerHTML = "";
+            <div class="comment-box" id="comment-box-${post.id}" style="display:none;">
+              <div class="comment-form">
+                <input class="input" id="comment-author-${post.id}" type="text" placeholder="댓글 작성자" />
+                <textarea class="textarea" id="comment-content-${post.id}" placeholder="댓글 내용"></textarea>
+                <button class="btn ghost" onclick="saveComment(${post.id})">댓글 등록</button>
+              </div>
+              <div class="comments" id="comments-${post.id}">${commentsHtml}</div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
 
-  data.forEach(m=>{
-    addMessage(m);
-  });
-}
+    async function loadData() {
+      setStatus('불러오는 중...');
 
-// 보내기
-async function send(){
+      const [postRes, commentRes] = await Promise.all([
+        supabase.from('suggestions').select('*').order('created_at', { ascending: false }),
+        supabase.from('comments').select('*').order('created_at', { ascending: true })
+      ]);
 
-  const text = input.value.trim();
+      if (postRes.error) {
+        console.error(postRes.error);
+        setStatus('게시글 불러오기 실패: ' + postRes.error.message, true);
+        posts = [];
+        comments = [];
+        renderPosts();
+        return;
+      }
 
-  if(!text) return;
+      if (commentRes.error) {
+        console.error(commentRes.error);
+        setStatus('댓글 불러오기 실패: ' + commentRes.error.message, true);
+        posts = postRes.data || [];
+        comments = [];
+        renderPosts();
+        return;
+      }
 
-  await db
-  .from("messages")
-  .insert({
-    name:username,
-    text:text,
-    reply:replyTarget
-  });
+      posts = postRes.data || [];
+      comments = commentRes.data || [];
+      renderPosts();
+      setStatus('완료');
+    }
 
-  input.value = "";
+    async function createPost() {
+      const author = authorInput.value.trim();
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
 
-  input.placeholder = "메시지 입력";
+      if (!author || !title || !content) {
+        setComposerStatus('작성자, 제목, 내용을 모두 입력하세요.', true);
+        return;
+      }
 
-  replyTarget = null;
-}
+      setComposerStatus('저장 중...');
+      const { error } = await supabase.from('suggestions').insert([{ author, title, content, likes: 0 }]);
 
-// 엔터
-input.addEventListener("keydown",e=>{
+      if (error) {
+        console.error(error);
+        setComposerStatus('저장 실패: ' + error.message, true);
+        return;
+      }
 
-  if(e.key==="Enter"){
-    send();
-  }
-});
+      authorInput.value = '';
+      titleInput.value = '';
+      contentInput.value = '';
+      setComposerStatus('저장 완료');
+      closeDrawer();
+      await loadData();
+    }
 
-// 실시간
-db.channel("room")
-.on(
-  "postgres_changes",
-  {
-    event:"INSERT",
-    schema:"public",
-    table:"messages"
-  },
-  payload=>{
-    addMessage(payload.new);
-  }
-)
-.subscribe();
+    async function saveComment(postId) {
+      const author = document.getElementById(`comment-author-${postId}`).value.trim();
+      const content = document.getElementById(`comment-content-${postId}`).value.trim();
 
-// escape
-function escapeHtml(text){
+      if (!author || !content) {
+        alert('댓글 작성자와 내용을 입력하세요.');
+        return;
+      }
 
-  if(!text) return "";
+      const { error } = await supabase.from('comments').insert([{ post_id: postId, author, content, likes: 0 }]);
+      if (error) {
+        console.error(error);
+        alert('댓글 저장 실패: ' + error.message);
+        return;
+      }
 
-  return text
-  .replaceAll("&","&amp;")
-  .replaceAll("<","&lt;")
-  .replaceAll(">","&gt;");
-}
+      document.getElementById(`comment-author-${postId}`).value = '';
+      document.getElementById(`comment-content-${postId}`).value = '';
+      await loadData();
+      const box = document.getElementById(`comment-box-${postId}`);
+      if (box) box.style.display = 'block';
+    }
 
-// 시작
-loadMessages();
-</script>
+    async function likePost(postId) {
+      const key = String(postId);
+      if (likedPosts.has(key)) {
+        alert('이미 좋아요를 눌렀습니다.');
+        return;
+      }
 
+      const post = posts.find(p => String(p.id) === key);
+      if (!post) return;
+
+      const { error } = await supabase
+        .from('suggestions')
+        .update({ likes: (post.likes ?? 0) + 1 })
+        .eq('id', postId);
+
+      if (error) {
+        alert('좋아요 실패: ' + error.message);
+        return;
+      }
+
+      likedPosts.add(key);
+      localStorage.setItem('likedPosts', JSON.stringify([...likedPosts]));
+      await loadData();
+    }
+
+    async function likeComment(commentId) {
+      const key = String(commentId);
+      if (likedComments.has(key)) {
+        alert('이미 좋아요를 눌렀습니다.');
+        return;
+      }
+
+      const comment = comments.find(c => String(c.id) === key);
+      if (!comment) return;
+
+      const { error } = await supabase
+        .from('comments')
+        .update({ likes: (comment.likes ?? 0) + 1 })
+        .eq('id', commentId);
+
+      if (error) {
+        alert('댓글 좋아요 실패: ' + error.message);
+        return;
+      }
+
+      likedComments.add(key);
+      localStorage.setItem('likedComments', JSON.stringify([...likedComments]));
+      await loadData();
+    }
+
+    async function editPost(postId) {
+      const post = posts.find(p => String(p.id) === String(postId));
+      if (!post) return;
+
+      const title = prompt('제목 수정', post.title || '');
+      if (title === null) return;
+
+      const content = prompt('내용 수정', post.content || '');
+      if (content === null) return;
+
+      const { error } = await supabase
+        .from('suggestions')
+        .update({ title, content })
+        .eq('id', postId);
+
+      if (error) {
+        alert('수정 실패: ' + error.message);
+        return;
+      }
+
+      await loadData();
+    }
+
+    async function deletePost(postId) {
+      if (!confirm('이 글을 삭제하시겠습니까? 댓글도 같이 삭제됩니다.')) return;
+
+      const { error: commentErr } = await supabase.from('comments').delete().eq('post_id', postId);
+      if (commentErr) {
+        alert('댓글 삭제 실패: ' + commentErr.message);
+        return;
+      }
+
+      const { error } = await supabase.from('suggestions').delete().eq('id', postId);
+      if (error) {
+        alert('삭제 실패: ' + error.message);
+        return;
+      }
+
+      await loadData();
+    }
+
+    async function deleteComment(commentId) {
+      if (!confirm('이 댓글을 삭제하시겠습니까?')) return;
+      const { error } = await supabase.from('comments').delete().eq('id', commentId);
+      if (error) {
+        alert('삭제 실패: ' + error.message);
+        return;
+      }
+      await loadData();
+    }
+
+    function toggleComments(postId) {
+      const box = document.getElementById(`comment-box-${postId}`);
+      if (!box) return;
+      box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function ensureSearchBox() {
+      if (document.getElementById('searchInput')) return;
+      const row = document.createElement('div');
+      row.className = 'filter-row';
+      row.innerHTML = `
+        <input class="input" id="searchInput" type="text" placeholder="검색" style="flex:1;min-width:220px;" />
+        <div class="spacer"></div>
+      `;
+      document.querySelector('.content').insertBefore(row, document.getElementById('postsList'));
+      document.getElementById('searchInput').addEventListener('input', renderPosts);
+    }
+
+    document.getElementById('openComposer').addEventListener('click', openDrawer);
+    document.getElementById('closeComposer').addEventListener('click', closeDrawer);
+    composerBackdrop.addEventListener('click', (e) => {
+      if (e.target === composerBackdrop) closeDrawer();
+    });
+    refreshBtn.addEventListener('click', loadData);
+    savePostBtn.addEventListener('click', createPost);
+
+    window.createPost = createPost;
+    window.saveComment = saveComment;
+    window.likePost = likePost;
+    window.likeComment = likeComment;
+    window.editPost = editPost;
+    window.deletePost = deletePost;
+    window.deleteComment = deleteComment;
+    window.toggleComments = toggleComments;
+
+    ensureSearchBox();
+
+    supabase
+      .channel('realtime-board')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'suggestions' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, loadData)
+      .subscribe();
+
+    loadData();
+  </script>
 </body>
 </html>
